@@ -1,0 +1,13 @@
+# Chrome extension artifacts
+*.pem
+*.crx
+
+# Development files
+.DS_Store
+.vscode/
+.idea/
+
+# Temporary files
+*.tmp
+*.log
+
