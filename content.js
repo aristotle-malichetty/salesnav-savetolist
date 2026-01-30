@@ -429,18 +429,6 @@ async function saveLeadsToList(listName) {
 
     sendStatus('Step 3: Selecting or creating list...', 'info');
 
-    // First, check if there's a search input in the dropdown and type to filter
-    const dropdownInput = document.querySelector('[class*="dropdown"] input[type="text"]') ||
-                         document.querySelector('[class*="list-picker"] input') ||
-                         document.querySelector('input[placeholder*="Search"]') ||
-                         document.querySelector('input[placeholder*="search"]');
-
-    if (dropdownInput) {
-      sendStatus(`Searching for list "${listName}"...`, 'info');
-      await typeHumanLike(dropdownInput, listName);
-      await wait(1500); // Wait for search/filter results
-    }
-
     // Look for the list in dropdown (use contains to match "List Name (25)" format)
     const listElement = findClickableByText(listName, true);
 
@@ -466,14 +454,21 @@ async function saveLeadsToList(listName) {
       if (createNewBtn) {
         console.log('[SalesNav] Found Create new list button:', createNewBtn.textContent);
         clickElement(createNewBtn);
-        await wait(1500); // Wait for create list form to appear
+        await wait(2000); // Wait for create list modal/form to appear
 
-        // Find the input field for new list name
-        const input = document.querySelector('input[type="text"]:not([value])') ||
-                     document.querySelector('input[placeholder*="list" i]') ||
-                     document.querySelector('input[placeholder*="name" i]') ||
-                     document.querySelector('[class*="create"] input[type="text"]') ||
-                     document.querySelector('input[type="text"]');
+        // Find the input field for new list name (be specific to avoid search bars)
+        // Look for inputs inside modals, forms, or with list-related placeholders
+        const input = document.querySelector('[class*="modal"] input[type="text"]') ||
+                     document.querySelector('[class*="form"] input[placeholder*="name" i]') ||
+                     document.querySelector('[class*="form"] input[placeholder*="list" i]') ||
+                     document.querySelector('input[placeholder*="Enter list name" i]') ||
+                     document.querySelector('input[placeholder*="List name" i]') ||
+                     document.querySelector('input[placeholder*="name" i]:not([placeholder*="keyword" i])') ||
+                     document.querySelector('[role="dialog"] input[type="text"]') ||
+                     document.querySelector('[class*="create-list"] input') ||
+                     document.querySelector('[class*="artdeco-modal"] input[type="text"]');
+
+        console.log('[SalesNav] Found input for list name:', input);
 
         if (input) {
           sendStatus(`Typing new list name "${listName}"...`, 'info');
