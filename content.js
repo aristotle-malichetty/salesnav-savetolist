@@ -334,6 +334,70 @@ function findNextButton() {
   return null;
 }
 
+// Helper function to type like a human (character by character with random delays)
+async function typeHumanLike(inputElement, text) {
+  console.log('[SalesNav] Typing human-like:', text);
+
+  // Focus the input first
+  inputElement.focus();
+  await wait(100);
+
+  // Clear existing value
+  inputElement.value = '';
+  inputElement.dispatchEvent(new Event('input', { bubbles: true }));
+  await wait(50);
+
+  // Type each character with random delay
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+
+    // Random delay between 50-150ms per character (human typing speed)
+    const delay = Math.floor(Math.random() * 100) + 50;
+
+    // Simulate keydown event
+    const keydownEvent = new KeyboardEvent('keydown', {
+      key: char,
+      code: `Key${char.toUpperCase()}`,
+      charCode: char.charCodeAt(0),
+      keyCode: char.charCodeAt(0),
+      which: char.charCodeAt(0),
+      bubbles: true
+    });
+    inputElement.dispatchEvent(keydownEvent);
+
+    // Add character to input value
+    inputElement.value += char;
+
+    // Simulate input event (this is what React/LinkedIn listens to)
+    inputElement.dispatchEvent(new Event('input', { bubbles: true }));
+    inputElement.dispatchEvent(new Event('change', { bubbles: true }));
+
+    // Simulate keyup event
+    const keyupEvent = new KeyboardEvent('keyup', {
+      key: char,
+      code: `Key${char.toUpperCase()}`,
+      charCode: char.charCodeAt(0),
+      keyCode: char.charCodeAt(0),
+      which: char.charCodeAt(0),
+      bubbles: true
+    });
+    inputElement.dispatchEvent(keyupEvent);
+
+    await wait(delay);
+  }
+
+  // Final input event to ensure value is registered
+  inputElement.dispatchEvent(new Event('input', { bubbles: true }));
+  inputElement.dispatchEvent(new Event('change', { bubbles: true }));
+
+  // Trigger blur and focus to ensure LinkedIn picks up the value
+  inputElement.blur();
+  await wait(100);
+  inputElement.focus();
+
+  console.log('[SalesNav] Finished typing, input value:', inputElement.value);
+}
+
 // Send status update to popup
 function sendStatus(message, type = 'info') {
   console.log(`[SalesNav] ${type.toUpperCase()}: ${message}`);
@@ -364,62 +428,79 @@ async function saveLeadsToList(listName) {
     await wait(2000);
 
     sendStatus('Step 3: Selecting or creating list...', 'info');
+
+    // First, check if there's a search input in the dropdown and type to filter
+    const dropdownInput = document.querySelector('[class*="dropdown"] input[type="text"]') ||
+                         document.querySelector('[class*="list-picker"] input') ||
+                         document.querySelector('input[placeholder*="Search"]') ||
+                         document.querySelector('input[placeholder*="search"]');
+
+    if (dropdownInput) {
+      sendStatus(`Searching for list "${listName}"...`, 'info');
+      await typeHumanLike(dropdownInput, listName);
+      await wait(1500); // Wait for search/filter results
+    }
+
     // Look for the list in dropdown (use contains to match "List Name (25)" format)
     const listElement = findClickableByText(listName, true);
-    
-    if (listElement) {
+
+    if (listElement && !listElement.textContent.toLowerCase().includes('create')) {
       // List exists, click it
       sendStatus(`Found existing list "${listName}"`, 'info');
       clickElement(listElement);
-      
+
       // Wait for loading spinner and save operation to complete (checkmark appears)
       sendStatus('Waiting for leads to save (checkmark to appear)...', 'info');
       await wait(3000); // Wait for spinner and save to complete
     } else {
       // List doesn't exist, need to create it
-      sendStatus(`Creating new list "${listName}"...`, 'info');
-      
-      // Look for "Create new list" or similar option
-      const createNewBtn = findClickableByText('create') || 
+      sendStatus(`List not found. Creating new list "${listName}"...`, 'info');
+
+      // Look for "+ Create new list" button at the bottom of dropdown
+      const createNewBtn = findClickableByText('create new list') ||
+                          findClickableByText('+ create') ||
+                          findClickableByText('create list') ||
                           findClickableByText('new list') ||
-                          findClickableByText('add');
-      
+                          findClickableByText('create');
+
       if (createNewBtn) {
+        console.log('[SalesNav] Found Create new list button:', createNewBtn.textContent);
         clickElement(createNewBtn);
-        await wait(1000);
-        
-        // Find input field and enter list name
-        const input = document.querySelector('input[type="text"]') || 
-                     document.querySelector('input[placeholder*="list"]') ||
-                     document.querySelector('input[placeholder*="name"]');
-        
+        await wait(1500); // Wait for create list form to appear
+
+        // Find the input field for new list name
+        const input = document.querySelector('input[type="text"]:not([value])') ||
+                     document.querySelector('input[placeholder*="list" i]') ||
+                     document.querySelector('input[placeholder*="name" i]') ||
+                     document.querySelector('[class*="create"] input[type="text"]') ||
+                     document.querySelector('input[type="text"]');
+
         if (input) {
-          input.value = listName;
-          input.dispatchEvent(new Event('input', { bubbles: true }));
-          await wait(500);
-          
-          // Click create/save button
-          const confirmBtn = findClickableByText('create') || 
+          sendStatus(`Typing new list name "${listName}"...`, 'info');
+          await typeHumanLike(input, listName);
+          await wait(1500); // Wait for LinkedIn to validate and enable Create button
+
+          // Click create/save button (look for it again as it may have appeared)
+          const confirmBtn = findClickableByText('create') ||
                             findClickableByText('save') ||
-                            findClickableByText('add');
+                            document.querySelector('button[type="submit"]');
           if (confirmBtn) {
+            sendStatus('Clicking Create button...', 'info');
+            await wait(500);
             clickElement(confirmBtn);
+            await wait(3000); // Wait for list to be created and leads to save
+            sendStatus('List created and leads saved!', 'info');
+          } else {
+            console.log('[SalesNav] Create button not found after typing');
+            sendStatus('Warning: Create button not found', 'error');
           }
+        } else {
+          console.log('[SalesNav] Input field not found for new list name');
+          sendStatus('Warning: Could not find input field for list name', 'error');
         }
       } else {
-        // Try typing in a search/input field if available
-        const inputs = document.querySelectorAll('input[type="text"]');
-        if (inputs.length > 0) {
-          inputs[0].value = listName;
-          inputs[0].dispatchEvent(new Event('input', { bubbles: true }));
-          await wait(1000);
-          
-          // Look for the list name in results (use contains matching)
-          const newListElement = findClickableByText(listName, true);
-          if (newListElement) {
-            clickElement(newListElement);
-          }
-        }
+        console.log('[SalesNav] Create new list button not found');
+        sendStatus('Warning: Create new list option not found', 'error');
       }
     }
     await wait(1000);

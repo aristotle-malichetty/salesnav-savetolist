@@ -6,6 +6,8 @@ A Chrome extension that automates saving LinkedIn Sales Navigator leads to custo
 
 - **One-click automation** - Save all leads from search results to a list
 - **Multi-page support** - Automatically processes all pages of search results
+- **Create new lists** - Automatically creates lists if they don't exist
+- **Human-like typing** - Types list names character by character to pass bot detection
 - **Smart navigation** - Handles LinkedIn's SPA routing with page reloads
 - **Progress tracking** - Real-time status updates in the popup
 - **Stop anytime** - Cancel automation mid-process if needed
@@ -127,4 +129,4 @@ MIT License - Use freely for personal or commercial purposes.
 
 ## Version
 
-1.1.0
+1.2.0
