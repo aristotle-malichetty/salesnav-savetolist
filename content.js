@@ -411,6 +411,12 @@ function sendStatus(message, type = 'info') {
 // Main automation function
 async function saveLeadsToList(listName) {
   try {
+    // Check if stopped before starting
+    if (await shouldStopAutomation()) {
+      sendStatus('Automation stopped by user', 'error');
+      return;
+    }
+
     sendStatus('Step 1: Clicking "Select all"...', 'info');
     const selectAllBtn = findClickableByText('select all');
     if (!selectAllBtn) {
@@ -419,6 +425,12 @@ async function saveLeadsToList(listName) {
     clickElement(selectAllBtn);
     await wait(1000);
 
+    // Check if stopped
+    if (await shouldStopAutomation()) {
+      sendStatus('Automation stopped by user', 'error');
+      return;
+    }
+
     sendStatus('Step 2: Clicking "Save to list"...', 'info');
     const saveToListBtn = findClickableByText('save to list');
     if (!saveToListBtn) {
@@ -426,6 +438,13 @@ async function saveLeadsToList(listName) {
     }
     clickElement(saveToListBtn);
     await wait(2000);
+
+    // Check if stopped
+    if (await shouldStopAutomation()) {
+      sendStatus('Automation stopped by user', 'error');
+      await closeDropdowns();
+      return;
+    }
 
     sendStatus('Step 3: Selecting or creating list...', 'info');
 
@@ -500,10 +519,23 @@ async function saveLeadsToList(listName) {
     }
     await wait(1000);
 
+    // Check if stopped before navigating
+    if (await shouldStopAutomation()) {
+      sendStatus('Automation stopped by user', 'error');
+      await closeDropdowns();
+      return;
+    }
+
     // Close the dropdown before navigating
     sendStatus('Closing dropdown...', 'info');
     await closeDropdowns();
     await wait(500);
+
+    // Check if stopped one more time before navigation
+    if (await shouldStopAutomation()) {
+      sendStatus('Automation stopped by user', 'error');
+      return;
+    }
 
     sendStatus('Step 4: Navigating to page 2...', 'info');
 
@@ -512,6 +544,12 @@ async function saveLeadsToList(listName) {
 
     if (!nextPageUrl) {
       sendStatus('Could not determine next page URL. Completed!', 'success');
+      return;
+    }
+
+    // Final stop check before navigation
+    if (await shouldStopAutomation()) {
+      sendStatus('Automation stopped by user', 'error');
       return;
     }
 
@@ -712,7 +750,14 @@ async function continueOnPage2(listName) {
     if (!saveToListBtn || saveToListBtn.disabled || saveToListBtn.getAttribute('aria-disabled') === 'true') {
       sendStatus(`Page ${currentPage}: Leads already saved, skipping to next page...`, 'info');
       console.log('[SalesNav] Save to list button disabled or not found - leads likely already saved');
-      
+
+      // Check if stopped before skipping to next page
+      if (await shouldStopAutomation()) {
+        chrome.storage.local.remove(['automationState']);
+        sendStatus('Automation stopped by user', 'error');
+        return;
+      }
+
       // Skip to next page by reloading with new URL
       const nextPageUrl = buildNextPageUrl();
       const nextBtn = findNextButton();
@@ -740,9 +785,24 @@ async function continueOnPage2(listName) {
       }
     }
     
+    // Check if stopped before clicking Save to list
+    if (await shouldStopAutomation()) {
+      chrome.storage.local.remove(['automationState']);
+      sendStatus('Automation stopped by user', 'error');
+      return;
+    }
+
     console.log('[SalesNav] Found Save to list button:', saveToListBtn);
     clickElement(saveToListBtn);
     await wait(1500);
+
+    // Check if stopped after opening dropdown
+    if (await shouldStopAutomation()) {
+      chrome.storage.local.remove(['automationState']);
+      await closeDropdowns();
+      sendStatus('Automation stopped by user', 'error');
+      return;
+    }
 
     sendStatus(`Page ${currentPage}: Selecting list from dropdown...`, 'info');
     const listElement = findClickableByText(listName, true);
@@ -755,10 +815,25 @@ async function continueOnPage2(listName) {
     sendStatus(`Page ${currentPage}: Waiting for save to complete...`, 'info');
     await wait(3000);
 
+    // Check if stopped after saving
+    if (await shouldStopAutomation()) {
+      chrome.storage.local.remove(['automationState']);
+      await closeDropdowns();
+      sendStatus('Automation stopped by user', 'error');
+      return;
+    }
+
     // Close the dropdown before navigating to next page
     sendStatus(`Page ${currentPage}: Closing dropdown...`, 'info');
     await closeDropdowns();
     await wait(500);
+
+    // Final stop check before navigating to next page
+    if (await shouldStopAutomation()) {
+      chrome.storage.local.remove(['automationState']);
+      sendStatus('Automation stopped by user', 'error');
+      return;
+    }
 
     // Check if there's a Next button (to determine if we should continue)
     const nextBtn = findNextButton();
