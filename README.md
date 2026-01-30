@@ -137,6 +137,10 @@ This shows:
 - **Interruptible waits** - Stop flag checked every 100ms
 - **State persistence** - Uses `chrome.storage.local` to resume after page reload
 
+## Privacy
+
+This extension stores minimal data locally on your device. No data is collected or sent to external servers. See [Privacy Policy](PRIVACY_POLICY.md) for details.
+
 ## License
 
 MIT License - Use freely for personal or commercial purposes.
