@@ -1,8 +1,26 @@
 // Content script for SalesNav Lead Saver
 
-// Helper function to wait
+// Global flag for immediate stop - checked frequently
+let STOP_REQUESTED = false;
+
+// Helper function to wait (checks stop flag every 100ms)
 function wait(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise((resolve, reject) => {
+    const checkInterval = 100; // Check every 100ms
+    let elapsed = 0;
+
+    const timer = setInterval(() => {
+      elapsed += checkInterval;
+
+      if (STOP_REQUESTED) {
+        clearInterval(timer);
+        reject(new Error('STOPPED_BY_USER'));
+      } else if (elapsed >= ms) {
+        clearInterval(timer);
+        resolve();
+      }
+    }, checkInterval);
+  });
 }
 
 // Helper function to wait for an element to appear
@@ -570,8 +588,15 @@ async function saveLeadsToList(listName) {
     });
     
   } catch (error) {
-    sendStatus('Error: ' + error.message, 'error');
-    console.error('[SalesNav] Error:', error);
+    if (error.message === 'STOPPED_BY_USER') {
+      chrome.storage.local.remove(['automationState']);
+      await closeDropdowns();
+      sendStatus('Automation stopped by user', 'error');
+      console.log('[SalesNav] Automation stopped by user');
+    } else {
+      sendStatus('Error: ' + error.message, 'error');
+      console.error('[SalesNav] Error:', error);
+    }
   }
 }
 
@@ -580,6 +605,9 @@ chrome.storage.local.get(['automationState'], async function(result) {
   if (result.automationState && result.automationState.active) {
     console.log('[SalesNav] Resuming automation after navigation:', result.automationState);
     const { listName, step } = result.automationState;
+
+    // Reset stop flag when resuming (fresh page load)
+    STOP_REQUESTED = false;
 
     // DON'T clear the state yet - we need it to check if automation is running
     // It will be cleared when automation completes, errors, or user stops
@@ -867,20 +895,33 @@ async function continueOnPage2(listName) {
   } catch (error) {
     // Clear state on error
     chrome.storage.local.remove(['automationState']);
-    sendStatus('Error: ' + error.message, 'error');
-    console.error('[SalesNav] Error:', error);
+
+    if (error.message === 'STOPPED_BY_USER') {
+      await closeDropdowns();
+      sendStatus('Automation stopped by user', 'error');
+      console.log('[SalesNav] Automation stopped by user');
+    } else {
+      sendStatus('Error: ' + error.message, 'error');
+      console.error('[SalesNav] Error:', error);
+    }
   }
 }
 
 // Listen for messages from popup
 chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
   if (request.action === 'saveLeads') {
+    // Reset stop flag when starting new automation
+    STOP_REQUESTED = false;
     saveLeadsToList(request.listName);
     sendResponse({ status: 'started' });
   } else if (request.action === 'stopAutomation') {
-    // Clear automation state
+    // Set stop flag IMMEDIATELY for responsive stopping
+    STOP_REQUESTED = true;
+    console.log('[SalesNav] STOP FLAG SET - stopping immediately');
+
+    // Also clear automation state from storage
     chrome.storage.local.remove(['automationState']);
-    console.log('[SalesNav] Stop command received');
+    console.log('[SalesNav] Stop command received, automation state cleared');
     sendResponse({ status: 'stopped' });
   }
   return true;
