@@ -126,7 +126,6 @@ This shows:
 | Permission | Purpose |
 |------------|---------|
 | `activeTab` | Interact with current tab |
-| `scripting` | Inject automation scripts |
 | `storage` | Save state across page reloads |
 | `linkedin.com` | Run on LinkedIn pages |
 
