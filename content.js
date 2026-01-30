@@ -633,12 +633,13 @@ chrome.storage.local.get(['automationState'], async function(result) {
 
 // Function to check if automation should stop
 async function shouldStopAutomation() {
-  return new Promise((resolve) => {
-    chrome.storage.local.get(['automationState'], function(result) {
-      // If state is cleared or not active, stop
-      resolve(!result.automationState || !result.automationState.active);
-    });
-  });
+  // Check global flag first (instant check)
+  if (STOP_REQUESTED) {
+    return true;
+  }
+  // Don't check storage - rely on the flag only
+  // Storage check was causing issues on fresh starts
+  return false;
 }
 
 // Function to wait for page content to change (new leads to load)
