@@ -1,5 +1,7 @@
 # SalesNav Lead Saver
 
+![SalesNav Lead Saver](banner.svg)
+
 A Chrome extension that automates saving LinkedIn Sales Navigator leads to custom lists across multiple pages.
 
 ## Features
