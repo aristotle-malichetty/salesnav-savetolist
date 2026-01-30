@@ -1,0 +1,136 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="800" viewBox="0 0 1280 800">
+  <!-- Background -->
+  <rect width="1280" height="800" fill="#f3f2ef"/>
+
+  <!-- Browser Chrome -->
+  <rect width="1280" height="60" fill="#dee1e6"/>
+
+  <!-- Browser buttons -->
+  <circle cx="20" cy="30" r="6" fill="#ff5f57"/>
+  <circle cx="40" cy="30" r="6" fill="#ffbd2e"/>
+  <circle cx="60" cy="30" r="6" fill="#28ca41"/>
+
+  <!-- URL Bar -->
+  <rect x="200" y="15" width="600" height="30" rx="15" fill="white"/>
+  <text x="220" y="35" font-family="Arial" font-size="13" fill="#666">linkedin.com/sales/search/people#page=3</text>
+
+  <!-- Extension Icon in toolbar (active) -->
+  <rect x="1180" y="15" width="30" height="30" rx="4" fill="#0077B5"/>
+  <text x="1188" y="35" font-family="Arial" font-size="12" fill="white" font-weight="bold">SN</text>
+  <!-- Activity indicator -->
+  <circle cx="1200" cy="20" r="5" fill="#28ca41"/>
+
+  <!-- LinkedIn Header -->
+  <rect y="60" width="1280" height="52" fill="#fff"/>
+  <rect x="20" y="70" width="100" height="32" rx="4" fill="#0077B5"/>
+  <text x="35" y="92" font-family="Arial" font-size="14" fill="white" font-weight="bold">Sales Navigator</text>
+
+  <!-- Main content dimmed (automation running) -->
+  <rect x="0" y="112" width="1280" height="688" fill="rgba(0,0,0,0.03)"/>
+
+  <!-- Sidebar -->
+  <rect x="0" y="112" width="250" height="688" fill="#fff"/>
+  <text x="20" y="145" font-family="Arial" font-size="14" fill="#333" font-weight="bold">Filters</text>
+
+  <!-- Main Content Area -->
+  <rect x="250" y="112" width="1030" height="688" fill="#f3f2ef"/>
+
+  <!-- Results header -->
+  <rect x="270" y="130" width="990" height="50" fill="#fff" rx="4"/>
+  <text x="290" y="162" font-family="Arial" font-size="14" fill="#333" font-weight="bold">2,847 lead results</text>
+  <text x="440" y="162" font-family="Arial" font-size="12" fill="#666">• Page 3 of 114</text>
+
+  <!-- All selected indicator -->
+  <rect x="700" y="142" width="100" height="28" rx="4" fill="#e8f5e9" stroke="#28ca41" stroke-width="1"/>
+  <text x="717" y="161" font-family="Arial" font-size="12" fill="#28ca41">✓ All selected</text>
+
+  <rect x="810" y="142" width="90" height="28" rx="4" fill="#0077B5"/>
+  <text x="823" y="161" font-family="Arial" font-size="12" fill="#fff">Save to list</text>
+
+  <!-- Lead Cards with checkmarks -->
+  <g transform="translate(270, 195)">
+    <rect width="990" height="100" fill="#e8f5e9" rx="4" stroke="#28ca41" stroke-width="2"/>
+    <rect x="15" y="40" width="20" height="20" rx="2" fill="#28ca41"/>
+    <text x="20" y="55" font-family="Arial" font-size="14" fill="#fff">✓</text>
+    <circle cx="60" cy="50" r="30" fill="#ddd"/>
+    <text x="60" y="55" font-family="Arial" font-size="20" fill="#666" text-anchor="middle">AL</text>
+    <text x="110" y="35" font-family="Arial" font-size="14" fill="#333" font-weight="bold">Amanda Lee</text>
+    <text x="110" y="55" font-family="Arial" font-size="12" fill="#666">CSSD Manager at NYU Langone</text>
+    <text x="110" y="75" font-family="Arial" font-size="11" fill="#999">New York, NY • 280+ connections</text>
+  </g>
+
+  <g transform="translate(270, 305)">
+    <rect width="990" height="100" fill="#e8f5e9" rx="4" stroke="#28ca41" stroke-width="2"/>
+    <rect x="15" y="40" width="20" height="20" rx="2" fill="#28ca41"/>
+    <text x="20" y="55" font-family="Arial" font-size="14" fill="#fff">✓</text>
+    <circle cx="60" cy="50" r="30" fill="#ddd"/>
+    <text x="60" y="55" font-family="Arial" font-size="20" fill="#666" text-anchor="middle">RJ</text>
+    <text x="110" y="35" font-family="Arial" font-size="14" fill="#333" font-weight="bold">Robert Johnson</text>
+    <text x="110" y="55" font-family="Arial" font-size="12" fill="#666">VP of Sterile Processing at HCA Healthcare</text>
+    <text x="110" y="75" font-family="Arial" font-size="11" fill="#999">Nashville, TN • 500+ connections</text>
+  </g>
+
+  <g transform="translate(270, 415)">
+    <rect width="990" height="100" fill="#e8f5e9" rx="4" stroke="#28ca41" stroke-width="2"/>
+    <rect x="15" y="40" width="20" height="20" rx="2" fill="#28ca41"/>
+    <text x="20" y="55" font-family="Arial" font-size="14" fill="#fff">✓</text>
+    <circle cx="60" cy="50" r="30" fill="#ddd"/>
+    <text x="60" y="55" font-family="Arial" font-size="20" fill="#666" text-anchor="middle">KW</text>
+    <text x="110" y="35" font-family="Arial" font-size="14" fill="#333" font-weight="bold">Karen Williams</text>
+    <text x="110" y="55" font-family="Arial" font-size="12" fill="#666">Sterile Processing Supervisor at Mayo Clinic</text>
+    <text x="110" y="75" font-family="Arial" font-size="11" fill="#999">Rochester, MN • 350+ connections</text>
+  </g>
+
+  <!-- Pagination showing page 3 active -->
+  <g transform="translate(700, 720)">
+    <rect x="0" y="0" width="30" height="30" rx="4" fill="#fff" stroke="#ddd"/>
+    <text x="11" y="20" font-family="Arial" font-size="12" fill="#333">1</text>
+    <rect x="40" y="0" width="30" height="30" rx="4" fill="#fff" stroke="#ddd"/>
+    <text x="51" y="20" font-family="Arial" font-size="12" fill="#333">2</text>
+    <rect x="80" y="0" width="30" height="30" rx="4" fill="#0077B5"/>
+    <text x="91" y="20" font-family="Arial" font-size="12" fill="#fff">3</text>
+    <text x="125" y="20" font-family="Arial" font-size="12" fill="#666">...</text>
+    <rect x="150" y="0" width="30" height="30" rx="4" fill="#fff" stroke="#ddd"/>
+    <text x="156" y="20" font-family="Arial" font-size="12" fill="#333">114</text>
+  </g>
+
+  <!-- Extension Popup showing progress -->
+  <g transform="translate(900, 80)">
+    <!-- Popup shadow -->
+    <rect x="5" y="5" width="280" height="250" rx="8" fill="rgba(0,0,0,0.2)"/>
+    <!-- Popup body -->
+    <rect width="280" height="250" rx="8" fill="#fff" stroke="#ddd"/>
+
+    <!-- Header -->
+    <text x="20" y="35" font-family="Arial" font-size="18" fill="#0077B5" font-weight="bold">SalesNav Lead Saver</text>
+
+    <!-- Input label -->
+    <text x="20" y="65" font-family="Arial" font-size="12" fill="#333">List Name:</text>
+
+    <!-- Input field (disabled during run) -->
+    <rect x="20" y="75" width="240" height="35" rx="4" fill="#f5f5f5" stroke="#ddd" stroke-width="1"/>
+    <text x="30" y="98" font-family="Arial" font-size="14" fill="#666">SPD_Directors_2025</text>
+
+    <!-- Processing button -->
+    <rect x="20" y="125" width="240" height="40" rx="4" fill="#90caf9"/>
+    <text x="100" y="151" font-family="Arial" font-size="14" fill="#fff" font-weight="bold">Processing...</text>
+
+    <!-- Stop button -->
+    <rect x="20" y="175" width="240" height="35" rx="4" fill="#ffcdd2" stroke="#f44336" stroke-width="1"/>
+    <text x="125" y="198" font-family="Arial" font-size="13" fill="#c62828" font-weight="bold">Stop</text>
+
+    <!-- Status -->
+    <rect x="20" y="220" width="240" height="25" rx="4" fill="#e3f2fd"/>
+    <text x="30" y="238" font-family="Arial" font-size="11" fill="#1565c0">Page 3: Saving 25 leads to list...</text>
+  </g>
+
+  <!-- Progress indicator overlay -->
+  <g transform="translate(500, 550)">
+    <rect x="0" y="0" width="300" height="60" rx="8" fill="#fff" stroke="#0077B5" stroke-width="2"/>
+    <text x="20" y="25" font-family="Arial" font-size="14" fill="#333" font-weight="bold">Multi-page Progress</text>
+    <text x="20" y="45" font-family="Arial" font-size="12" fill="#666">Pages completed: 2 of 114 • 50 leads saved</text>
+    <!-- Progress bar -->
+    <rect x="20" y="52" width="260" height="4" rx="2" fill="#e0e0e0"/>
+    <rect x="20" y="52" width="10" height="4" rx="2" fill="#0077B5"/>
+  </g>
+</svg>
