@@ -910,7 +910,10 @@ async function continueOnPage2(listName) {
 
 // Listen for messages from popup
 chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
-  if (request.action === 'saveLeads') {
+  if (request.action === 'ping') {
+    // Respond to ping to confirm content script is ready
+    sendResponse({ status: 'ready' });
+  } else if (request.action === 'saveLeads') {
     // Reset stop flag when starting new automation
     STOP_REQUESTED = false;
     saveLeadsToList(request.listName);

@@ -14,6 +14,9 @@ document.addEventListener('DOMContentLoaded', function() {
   // Check if automation is running
   checkAutomationStatus();
 
+  // Check if content script is ready
+  checkContentScriptReady();
+
   saveBtn.addEventListener('click', async function() {
     const listName = listNameInput.value.trim();
     
@@ -49,7 +52,16 @@ document.addEventListener('DOMContentLoaded', function() {
         { action: 'saveLeads', listName: listName },
         function(response) {
           if (chrome.runtime.lastError) {
-            updateStatus('Error: ' + chrome.runtime.lastError.message, 'error');
+            const errorMsg = chrome.runtime.lastError.message;
+
+            // Check if it's a connection error (page needs reload)
+            if (errorMsg.includes('Could not establish connection') ||
+                errorMsg.includes('Receiving end does not exist')) {
+              updateStatus('Please reload the page first (Ctrl+R or Cmd+R)', 'error');
+            } else {
+              updateStatus('Error: ' + errorMsg, 'error');
+            }
+
             saveBtn.disabled = false;
             saveBtn.textContent = 'Save Leads';
             stopBtn.style.display = 'none';
@@ -116,6 +128,28 @@ document.addEventListener('DOMContentLoaded', function() {
         updateStatus('Automation in progress...', 'info');
       }
     });
+  }
+
+  async function checkContentScriptReady() {
+    try {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+
+      if (!tab.url.includes('linkedin.com/sales')) {
+        updateStatus('Open a Sales Navigator search page to start', 'info');
+        return;
+      }
+
+      // Try to ping the content script
+      chrome.tabs.sendMessage(tab.id, { action: 'ping' }, function(response) {
+        if (chrome.runtime.lastError) {
+          // Content script not ready
+          updateStatus('⚠️ Reload page first (Ctrl+R / Cmd+R)', 'error');
+          saveBtn.disabled = true;
+        }
+      });
+    } catch (error) {
+      // Ignore
+    }
   }
 });
 
