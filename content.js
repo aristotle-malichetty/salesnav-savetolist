@@ -555,15 +555,7 @@ async function saveLeadsToList(listName) {
       return;
     }
 
-    sendStatus('Step 4: Navigating to page 2...', 'info');
-
-    // Build the next page URL by modifying the hash
-    const nextPageUrl = buildNextPageUrl();
-
-    if (!nextPageUrl) {
-      sendStatus('Could not determine next page URL. Completed!', 'success');
-      return;
-    }
+    sendStatus('Step 4: Going to next page...', 'info');
 
     // Final stop check before navigation
     if (await shouldStopAutomation()) {
@@ -571,21 +563,31 @@ async function saveLeadsToList(listName) {
       return;
     }
 
-    // Save automation state before navigation (page reload will kill the script)
-    sendStatus('Saving state and reloading to page 2...', 'info');
-    chrome.storage.local.set({
-      automationState: {
-        active: true,
-        listName: listName,
-        step: 'page2',
-        timestamp: Date.now()
-      }
-    }, function() {
-      console.log('[SalesNav] State saved, navigating to:', nextPageUrl);
-      // Change URL and force reload (hash changes don't auto-reload)
-      window.location.href = nextPageUrl;
-      window.location.reload();
-    });
+    // Find and click the Next button
+    const nextBtn = findNextButton();
+    const isNextDisabled = nextBtn ? (nextBtn.disabled || nextBtn.getAttribute('aria-disabled') === 'true') : true;
+
+    if (!nextBtn || isNextDisabled) {
+      sendStatus('Page 1 saved! No more pages available.', 'success');
+      return;
+    }
+
+    // Click Next button and wait for page to change (SPA navigation)
+    sendStatus('Going to next page...', 'info');
+    console.log('[SalesNav] Clicking Next button for SPA navigation');
+    clickElement(nextBtn);
+
+    // Wait for the page content to change
+    const pageChanged = await waitForPageChange(15000);
+    if (!pageChanged) {
+      sendStatus('Warning: Page may not have changed, but continuing...', 'info');
+    }
+
+    // Small delay for content to settle
+    await wait(2000);
+
+    // Continue automation on the new page (SPA - script still running)
+    await continueOnPage2(listName);
     
   } catch (error) {
     if (error.message === 'STOPPED_BY_USER') {
@@ -787,25 +789,24 @@ async function continueOnPage2(listName) {
         return;
       }
 
-      // Skip to next page by reloading with new URL
-      const nextPageUrl = buildNextPageUrl();
+      // Skip to next page by clicking Next button
       const nextBtn = findNextButton();
       const isNextDisabled = nextBtn ? (nextBtn.disabled || nextBtn.getAttribute('aria-disabled') === 'true') : true;
 
-      if (nextPageUrl && nextBtn && !isNextDisabled) {
-        chrome.storage.local.set({
-          automationState: {
-            active: true,
-            listName: listName,
-            step: 'page2',
-            timestamp: Date.now()
-          }
-        }, function() {
-          console.log(`[SalesNav] Skipping to next page:`, nextPageUrl);
-          window.location.href = nextPageUrl;
-          window.location.reload();
-        });
-        return; // Exit function early
+      if (nextBtn && !isNextDisabled) {
+        console.log(`[SalesNav] Skipping to next page by clicking Next button`);
+        clickElement(nextBtn);
+
+        // Wait for the page content to change (SPA navigation)
+        const pageChanged = await waitForPageChange(15000);
+        if (!pageChanged) {
+          sendStatus('Warning: Page may not have changed', 'info');
+        }
+        await wait(2000);
+
+        // Continue automation on the new page (recursive call)
+        await continueOnPage2(listName);
+        return; // Exit function after recursive call completes
       } else {
         // No more pages
         chrome.storage.local.remove(['automationState']);
@@ -867,25 +868,23 @@ async function continueOnPage2(listName) {
     // Check if there's a Next button (to determine if we should continue)
     const nextBtn = findNextButton();
     const isNextDisabled = nextBtn ? (nextBtn.disabled || nextBtn.getAttribute('aria-disabled') === 'true') : true;
-    const nextPageUrl = buildNextPageUrl();
 
-    if (nextBtn && !isNextDisabled && nextPageUrl) {
+    if (nextBtn && !isNextDisabled) {
       sendStatus(`Page ${currentPage}: Saved! Going to page ${currentPage + 1}...`, 'info');
-      console.log('[SalesNav] Next button found and enabled, navigating to next page...');
+      console.log('[SalesNav] Next button found and enabled, clicking to go to next page...');
 
-      // Save state and navigate with page reload
-      chrome.storage.local.set({
-        automationState: {
-          active: true,
-          listName: listName,
-          step: 'page2',
-          timestamp: Date.now()
-        }
-      }, function() {
-        console.log(`[SalesNav] Navigating to:`, nextPageUrl);
-        window.location.href = nextPageUrl;
-        window.location.reload();
-      });
+      // Click Next button (SPA navigation)
+      clickElement(nextBtn);
+
+      // Wait for the page content to change
+      const pageChanged = await waitForPageChange(15000);
+      if (!pageChanged) {
+        sendStatus('Warning: Page may not have changed', 'info');
+      }
+      await wait(2000);
+
+      // Continue automation on the new page (recursive call)
+      await continueOnPage2(listName);
     } else {
       // No more pages - clear state and show success
       chrome.storage.local.remove(['automationState']);
