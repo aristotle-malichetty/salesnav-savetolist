@@ -115,6 +115,106 @@ function scrollMainPageToBottom() {
   window.scrollTo(0, document.body.scrollHeight);
 }
 
+// Helper function to scroll smoothly to bottom (human-like)
+async function smoothScrollToBottom() {
+  const scrollHeight = document.documentElement.scrollHeight;
+  const viewportHeight = window.innerHeight;
+  const currentScroll = window.scrollY;
+  const targetScroll = scrollHeight - viewportHeight;
+
+  // Scroll in steps to simulate human behavior
+  const steps = 5;
+  const scrollPerStep = (targetScroll - currentScroll) / steps;
+
+  for (let i = 1; i <= steps; i++) {
+    window.scrollTo({
+      top: currentScroll + (scrollPerStep * i),
+      behavior: 'smooth'
+    });
+    await wait(150 + Math.random() * 100); // Random delay between steps
+  }
+}
+
+// Helper function to simulate human-like click with mouse events
+async function humanClick(element) {
+  if (!element) {
+    console.error('[SalesNav] humanClick: element is null');
+    return false;
+  }
+
+  try {
+    const rect = element.getBoundingClientRect();
+    // Add slight randomness to click position (like a human wouldn't click exact center)
+    const offsetX = (Math.random() - 0.5) * 10;
+    const offsetY = (Math.random() - 0.5) * 6;
+    const x = rect.left + rect.width / 2 + offsetX;
+    const y = rect.top + rect.height / 2 + offsetY;
+
+    console.log('[SalesNav] Human click at:', x, y, 'on:', element.tagName, element.textContent?.substring(0, 30));
+
+    // Simulate mouse entering the element
+    element.dispatchEvent(new MouseEvent('mouseenter', {
+      bubbles: true,
+      cancelable: true,
+      view: window,
+      clientX: x,
+      clientY: y
+    }));
+    await wait(50 + Math.random() * 50);
+
+    // Mouse over
+    element.dispatchEvent(new MouseEvent('mouseover', {
+      bubbles: true,
+      cancelable: true,
+      view: window,
+      clientX: x,
+      clientY: y
+    }));
+    await wait(30 + Math.random() * 30);
+
+    // Mouse down
+    element.dispatchEvent(new MouseEvent('mousedown', {
+      bubbles: true,
+      cancelable: true,
+      view: window,
+      clientX: x,
+      clientY: y,
+      button: 0
+    }));
+    await wait(50 + Math.random() * 80); // Humans hold click for a bit
+
+    // Mouse up
+    element.dispatchEvent(new MouseEvent('mouseup', {
+      bubbles: true,
+      cancelable: true,
+      view: window,
+      clientX: x,
+      clientY: y,
+      button: 0
+    }));
+    await wait(10);
+
+    // Click event
+    element.dispatchEvent(new MouseEvent('click', {
+      bubbles: true,
+      cancelable: true,
+      view: window,
+      clientX: x,
+      clientY: y,
+      button: 0
+    }));
+
+    // Also call native click as backup
+    element.click();
+
+    console.log('[SalesNav] Human click completed');
+    return true;
+  } catch (error) {
+    console.error('[SalesNav] Error in humanClick:', error);
+    return false;
+  }
+}
+
 // Helper function to find the leads scrollable container
 function findLeadsContainer() {
   // Look for common Sales Navigator container classes
@@ -535,7 +635,7 @@ async function saveLeadsToList(listName) {
         sendStatus('Warning: Create new list option not found', 'error');
       }
     }
-    await wait(1000);
+    await wait(1500);
 
     // Check if stopped before navigating
     if (await shouldStopAutomation()) {
@@ -544,46 +644,45 @@ async function saveLeadsToList(listName) {
       return;
     }
 
-    // Close the dropdown before navigating
-    sendStatus('Closing dropdown...', 'info');
-    await closeDropdowns();
-    await wait(500);
+    sendStatus('Step 4: Scrolling to Next button...', 'info');
 
-    // Check if stopped one more time before navigation
-    if (await shouldStopAutomation()) {
-      sendStatus('Automation stopped by user', 'error');
-      return;
-    }
+    // Scroll down smoothly to reveal the Next button (like a human would)
+    await smoothScrollToBottom();
+    await wait(800);
 
-    sendStatus('Step 4: Going to next page...', 'info');
-
-    // Final stop check before navigation
-    if (await shouldStopAutomation()) {
-      sendStatus('Automation stopped by user', 'error');
-      return;
-    }
-
-    // Find and click the Next button
+    // Find the Next button
     const nextBtn = findNextButton();
     const isNextDisabled = nextBtn ? (nextBtn.disabled || nextBtn.getAttribute('aria-disabled') === 'true') : true;
 
     if (!nextBtn || isNextDisabled) {
+      chrome.storage.local.remove(['automationState']);
       sendStatus('Page 1 saved! No more pages available.', 'success');
       return;
     }
 
-    // Click Next button and wait for page to change (SPA navigation)
-    sendStatus('Going to next page...', 'info');
-    console.log('[SalesNav] Clicking Next button for SPA navigation');
-    clickElement(nextBtn);
+    // Scroll the Next button into view
+    nextBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    await wait(500);
+
+    // Check if stopped before clicking
+    if (await shouldStopAutomation()) {
+      sendStatus('Automation stopped by user', 'error');
+      return;
+    }
+
+    // Click Next button with human-like mouse movement (this closes the dropdown)
+    sendStatus('Clicking Next...', 'info');
+    console.log('[SalesNav] Clicking Next button with mouse events');
+    await humanClick(nextBtn);
 
     // Wait for the page content to change
+    sendStatus('Waiting for next page to load...', 'info');
     const pageChanged = await waitForPageChange(15000);
     if (!pageChanged) {
       sendStatus('Warning: Page may not have changed, but continuing...', 'info');
     }
 
-    // Small delay for content to settle
+    // Wait for content to settle
     await wait(2000);
 
     // Continue automation on the new page (SPA - script still running)
@@ -789,13 +888,19 @@ async function continueOnPage2(listName) {
         return;
       }
 
-      // Skip to next page by clicking Next button
+      // Scroll down and click Next button
+      await smoothScrollToBottom();
+      await wait(500);
+
       const nextBtn = findNextButton();
       const isNextDisabled = nextBtn ? (nextBtn.disabled || nextBtn.getAttribute('aria-disabled') === 'true') : true;
 
       if (nextBtn && !isNextDisabled) {
+        nextBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        await wait(300);
+
         console.log(`[SalesNav] Skipping to next page by clicking Next button`);
-        clickElement(nextBtn);
+        await humanClick(nextBtn);
 
         // Wait for the page content to change (SPA navigation)
         const pageChanged = await waitForPageChange(15000);
@@ -843,7 +948,7 @@ async function continueOnPage2(listName) {
     clickElement(listElement);
 
     sendStatus(`Page ${currentPage}: Waiting for save to complete...`, 'info');
-    await wait(3000);
+    await wait(1500);
 
     // Check if stopped after saving
     if (await shouldStopAutomation()) {
@@ -853,30 +958,35 @@ async function continueOnPage2(listName) {
       return;
     }
 
-    // Close the dropdown before navigating to next page
-    sendStatus(`Page ${currentPage}: Closing dropdown...`, 'info');
-    await closeDropdowns();
-    await wait(500);
-
-    // Final stop check before navigating to next page
-    if (await shouldStopAutomation()) {
-      chrome.storage.local.remove(['automationState']);
-      sendStatus('Automation stopped by user', 'error');
-      return;
-    }
+    // Scroll down to reveal Next button (this helps close the dropdown naturally)
+    sendStatus(`Page ${currentPage}: Scrolling to Next button...`, 'info');
+    await smoothScrollToBottom();
+    await wait(800);
 
     // Check if there's a Next button (to determine if we should continue)
     const nextBtn = findNextButton();
     const isNextDisabled = nextBtn ? (nextBtn.disabled || nextBtn.getAttribute('aria-disabled') === 'true') : true;
 
     if (nextBtn && !isNextDisabled) {
-      sendStatus(`Page ${currentPage}: Saved! Going to page ${currentPage + 1}...`, 'info');
-      console.log('[SalesNav] Next button found and enabled, clicking to go to next page...');
+      // Scroll the Next button into view
+      nextBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      await wait(500);
 
-      // Click Next button (SPA navigation)
-      clickElement(nextBtn);
+      // Final stop check before clicking
+      if (await shouldStopAutomation()) {
+        chrome.storage.local.remove(['automationState']);
+        sendStatus('Automation stopped by user', 'error');
+        return;
+      }
+
+      sendStatus(`Page ${currentPage}: Saved! Clicking Next...`, 'info');
+      console.log('[SalesNav] Clicking Next button with human-like click...');
+
+      // Click Next button with human-like mouse events (this closes the dropdown)
+      await humanClick(nextBtn);
 
       // Wait for the page content to change
+      sendStatus('Waiting for next page to load...', 'info');
       const pageChanged = await waitForPageChange(15000);
       if (!pageChanged) {
         sendStatus('Warning: Page may not have changed', 'info');

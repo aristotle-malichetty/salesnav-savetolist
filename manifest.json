@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "SalesNav Lead Saver",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "description": "Save LinkedIn Sales Navigator leads to a list automatically",
   "permissions": [
     "activeTab",
