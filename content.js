@@ -327,34 +327,64 @@ function clickElement(element) {
   }
 }
 
-// Helper function to build the next page URL (handles hash-based pagination)
+// Helper function to get current page number from URL
+function getCurrentPageFromUrl() {
+  const currentUrl = window.location.href;
+
+  // LinkedIn Sales Nav uses ?page=X in query string (like SalesNavScraper)
+  const queryPageMatch = currentUrl.match(/[?&]page=(\d+)/);
+  if (queryPageMatch) {
+    return parseInt(queryPageMatch[1]);
+  }
+
+  // Fallback: check hash fragment
+  const hash = window.location.hash;
+  const hashPageMatch = hash.match(/page=(\d+)/);
+  if (hashPageMatch) {
+    return parseInt(hashPageMatch[1]);
+  }
+
+  return 1;
+}
+
+// Helper function to build the next page URL (uses query parameter like SalesNavScraper)
 function buildNextPageUrl() {
   const currentUrl = window.location.href;
-  const hash = window.location.hash;
-
-  // LinkedIn Sales Nav uses #page=X format
-  const hashPageMatch = hash.match(/page=(\d+)/);
-  const currentPage = hashPageMatch ? parseInt(hashPageMatch[1]) : 1;
+  const currentPage = getCurrentPageFromUrl();
   const nextPage = currentPage + 1;
 
   console.log('[SalesNav] Current page:', currentPage, '-> Next page:', nextPage);
 
-  let newUrl;
+  // Parse the URL properly
+  const url = new URL(currentUrl);
 
-  if (hashPageMatch) {
-    // Replace existing page number in hash
-    newUrl = currentUrl.replace(/#page=\d+/, `#page=${nextPage}`);
-  } else if (hash) {
-    // Hash exists but no page param - add page at start of hash
-    const baseUrl = currentUrl.split('#')[0];
-    newUrl = baseUrl + '#page=' + nextPage + '&' + hash.substring(1);
-  } else {
-    // No hash at all - add one
-    newUrl = currentUrl + '#page=' + nextPage;
-  }
+  // Update or add page parameter in query string (like SalesNavScraper does)
+  url.searchParams.set('page', nextPage.toString());
 
+  const newUrl = url.toString();
   console.log('[SalesNav] Next page URL:', newUrl);
   return newUrl;
+}
+
+// Navigate to next page using direct URL navigation (more reliable than button clicking)
+async function navigateToNextPage() {
+  // First check if there are more pages by looking at the Next button state
+  const nextBtn = findNextButton();
+  const isNextDisabled = nextBtn ? (nextBtn.disabled || nextBtn.getAttribute('aria-disabled') === 'true') : true;
+
+  if (!nextBtn || isNextDisabled) {
+    console.log('[SalesNav] No more pages available (Next button disabled or not found)');
+    return false;
+  }
+
+  // Build the next page URL
+  const nextPageUrl = buildNextPageUrl();
+  console.log('[SalesNav] Navigating to:', nextPageUrl);
+
+  // Navigate using window.location (triggers full page load in SPA)
+  window.location.href = nextPageUrl;
+
+  return true;
 }
 
 // Helper function to close any open dropdowns/modals
@@ -644,49 +674,39 @@ async function saveLeadsToList(listName) {
       return;
     }
 
-    sendStatus('Step 4: Scrolling to Next button...', 'info');
+    sendStatus('Step 4: Navigating to next page...', 'info');
 
-    // Scroll down smoothly to reveal the Next button (like a human would)
+    // Scroll down to check for Next button state
     await smoothScrollToBottom();
     await wait(800);
 
-    // Find the Next button
-    const nextBtn = findNextButton();
-    const isNextDisabled = nextBtn ? (nextBtn.disabled || nextBtn.getAttribute('aria-disabled') === 'true') : true;
-
-    if (!nextBtn || isNextDisabled) {
-      chrome.storage.local.remove(['automationState']);
-      sendStatus('Page 1 saved! No more pages available.', 'success');
-      return;
-    }
-
-    // Scroll the Next button into view
-    nextBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    await wait(500);
-
-    // Check if stopped before clicking
+    // Check if stopped before navigating
     if (await shouldStopAutomation()) {
       sendStatus('Automation stopped by user', 'error');
       return;
     }
 
-    // Click Next button with human-like mouse movement (this closes the dropdown)
-    sendStatus('Clicking Next...', 'info');
-    console.log('[SalesNav] Clicking Next button with mouse events');
-    await humanClick(nextBtn);
+    // Save automation state before navigating (page will reload)
+    chrome.storage.local.set({
+      automationState: {
+        active: true,
+        listName: listName,
+        step: 'page2'
+      }
+    });
 
-    // Wait for the page content to change
-    sendStatus('Waiting for next page to load...', 'info');
-    const pageChanged = await waitForPageChange(15000);
-    if (!pageChanged) {
-      sendStatus('Warning: Page may not have changed, but continuing...', 'info');
+    // Use direct URL navigation (more reliable than button clicking)
+    sendStatus('Navigating to page 2...', 'info');
+    const navigated = await navigateToNextPage();
+
+    if (!navigated) {
+      // No more pages available
+      chrome.storage.local.remove(['automationState']);
+      sendStatus('Page 1 saved! No more pages available.', 'success');
+      return;
     }
 
-    // Wait for content to settle
-    await wait(2000);
-
-    // Continue automation on the new page (SPA - script still running)
-    await continueOnPage2(listName);
+    // Page will reload, automation will resume from storage state
     
   } catch (error) {
     if (error.message === 'STOPPED_BY_USER') {
@@ -846,16 +866,9 @@ async function continueOnPage2(listName) {
       throw new Error('Timeout: "Select all" button did not appear after 5 minutes');
     }
     
-    // Get current page number from URL (check both hash and query string)
-    const currentUrl = window.location.href;
-    const hash = window.location.hash;
-    // LinkedIn Sales Nav uses #page=2 format (in hash fragment)
-    const hashPageMatch = hash.match(/page=(\d+)/);
-    const queryPageMatch = currentUrl.match(/\?.*page=(\d+)/);
-    const currentPage = hashPageMatch ? parseInt(hashPageMatch[1]) :
-                        queryPageMatch ? parseInt(queryPageMatch[1]) : 1;
-
-    console.log('[SalesNav] Current page detected:', currentPage, 'from hash:', hash);
+    // Get current page number from URL using centralized function
+    const currentPage = getCurrentPageFromUrl();
+    console.log('[SalesNav] Current page detected:', currentPage);
     
     sendStatus(`Page ${currentPage}: Clicking "Select all"...`, 'info');
     console.log('[SalesNav] Found Select all button:', selectAllBtn);
@@ -888,36 +901,32 @@ async function continueOnPage2(listName) {
         return;
       }
 
-      // Scroll down and click Next button
+      // Use direct URL navigation to skip to next page
       await smoothScrollToBottom();
       await wait(500);
 
-      const nextBtn = findNextButton();
-      const isNextDisabled = nextBtn ? (nextBtn.disabled || nextBtn.getAttribute('aria-disabled') === 'true') : true;
+      console.log(`[SalesNav] Skipping to next page using URL navigation`);
 
-      if (nextBtn && !isNextDisabled) {
-        nextBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        await wait(300);
-
-        console.log(`[SalesNav] Skipping to next page by clicking Next button`);
-        await humanClick(nextBtn);
-
-        // Wait for the page content to change (SPA navigation)
-        const pageChanged = await waitForPageChange(15000);
-        if (!pageChanged) {
-          sendStatus('Warning: Page may not have changed', 'info');
+      // Save state before navigating
+      chrome.storage.local.set({
+        automationState: {
+          active: true,
+          listName: listName,
+          step: 'page2'
         }
-        await wait(2000);
+      });
 
-        // Continue automation on the new page (recursive call)
-        await continueOnPage2(listName);
-        return; // Exit function after recursive call completes
-      } else {
+      const navigated = await navigateToNextPage();
+
+      if (!navigated) {
         // No more pages
         chrome.storage.local.remove(['automationState']);
         sendStatus(`Completed! Processed up to page ${currentPage}.`, 'success');
         return;
       }
+
+      // Page will reload and automation will resume from storage state
+      return;
     }
     
     // Check if stopped before clicking Save to list
@@ -948,7 +957,7 @@ async function continueOnPage2(listName) {
     clickElement(listElement);
 
     sendStatus(`Page ${currentPage}: Waiting for save to complete...`, 'info');
-    await wait(1500);
+    await wait(2000);
 
     // Check if stopped after saving
     if (await shouldStopAutomation()) {
@@ -958,43 +967,50 @@ async function continueOnPage2(listName) {
       return;
     }
 
-    // Scroll down to reveal Next button (this helps close the dropdown naturally)
-    sendStatus(`Page ${currentPage}: Scrolling to Next button...`, 'info');
+    // Close any open dropdowns
+    sendStatus(`Page ${currentPage}: Closing dropdown...`, 'info');
+    await closeDropdowns();
+    await wait(500);
+
+    // Scroll down to check Next button state
+    sendStatus(`Page ${currentPage}: Checking for more pages...`, 'info');
     await smoothScrollToBottom();
     await wait(800);
 
-    // Check if there's a Next button (to determine if we should continue)
+    // Final stop check before navigating
+    if (await shouldStopAutomation()) {
+      chrome.storage.local.remove(['automationState']);
+      sendStatus('Automation stopped by user', 'error');
+      return;
+    }
+
+    // Check if there are more pages
     const nextBtn = findNextButton();
     const isNextDisabled = nextBtn ? (nextBtn.disabled || nextBtn.getAttribute('aria-disabled') === 'true') : true;
 
     if (nextBtn && !isNextDisabled) {
-      // Scroll the Next button into view
-      nextBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      await wait(500);
+      sendStatus(`Page ${currentPage}: Saved! Navigating to next page...`, 'info');
+      console.log('[SalesNav] Using URL navigation to go to next page...');
 
-      // Final stop check before clicking
-      if (await shouldStopAutomation()) {
+      // Save state before navigating (page will reload)
+      chrome.storage.local.set({
+        automationState: {
+          active: true,
+          listName: listName,
+          step: 'page2'
+        }
+      });
+
+      // Use direct URL navigation (more reliable than button clicking)
+      const navigated = await navigateToNextPage();
+
+      if (!navigated) {
+        // No more pages - clear state and show success
         chrome.storage.local.remove(['automationState']);
-        sendStatus('Automation stopped by user', 'error');
-        return;
+        sendStatus(`All leads saved to "${listName}"! Processed up to page ${currentPage}.`, 'success');
+        console.log('[SalesNav] No more pages available. Automation complete!');
       }
-
-      sendStatus(`Page ${currentPage}: Saved! Clicking Next...`, 'info');
-      console.log('[SalesNav] Clicking Next button with human-like click...');
-
-      // Click Next button with human-like mouse events (this closes the dropdown)
-      await humanClick(nextBtn);
-
-      // Wait for the page content to change
-      sendStatus('Waiting for next page to load...', 'info');
-      const pageChanged = await waitForPageChange(15000);
-      if (!pageChanged) {
-        sendStatus('Warning: Page may not have changed', 'info');
-      }
-      await wait(2000);
-
-      // Continue automation on the new page (recursive call)
-      await continueOnPage2(listName);
+      // Page will reload and automation will resume from storage state
     } else {
       // No more pages - clear state and show success
       chrome.storage.local.remove(['automationState']);
@@ -1044,17 +1060,14 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
 window.salesNavDebug = function() {
   console.log('=== SalesNav Debug Info ===');
 
-  // Check URL - LinkedIn uses #page=X in hash fragment
+  // Check URL - using the same logic as the navigation
   const url = window.location.href;
-  const hash = window.location.hash;
-  const hashPageMatch = hash.match(/page=(\d+)/);
-  const queryPageMatch = url.match(/\?.*page=(\d+)/);
+  const currentPage = getCurrentPageFromUrl();
+  const nextPageUrl = buildNextPageUrl();
 
   console.log('Current URL:', url);
-  console.log('Hash fragment:', hash.substring(0, 100) + '...');
-  console.log('Page from hash:', hashPageMatch ? hashPageMatch[1] : 'none');
-  console.log('Page from query:', queryPageMatch ? queryPageMatch[1] : 'none');
-  console.log('Detected page:', hashPageMatch ? hashPageMatch[1] : (queryPageMatch ? queryPageMatch[1] : '1'));
+  console.log('Detected page (using getCurrentPageFromUrl):', currentPage);
+  console.log('Next page URL would be:', nextPageUrl);
 
   // Check for leads
   const leadSelectors = [
